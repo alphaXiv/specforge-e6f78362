@@ -62,7 +62,6 @@ run_one () {
     --tp-size 1 \
     --target-model-backend sglang \
     --report-to tensorboard \
-    --shard-target-output \
     --sglang-mem-fraction-static 0.4 \
     "$@" 2>&1 | tee "$ART/train_$tag.log"
 }
