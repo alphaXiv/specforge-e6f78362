@@ -67,10 +67,17 @@ run_one () {
     "$@" 2>&1 | tee "$ART/train_$tag.log"
 }
 
-echo "=================== [3/4] train CE baseline, then TV ==================="
+echo "=================== [3/4] train CE baseline, then TV, then alpha ==================="
 run_one ce
 run_one tv --lk-loss-type tv
+# alpha = -log_acceptance_rate: the paper's other LK variant, with stronger
+# gradients near acceptance=1 than raw TV's (1 - alpha).
+run_one alpha --lk-loss-type alpha
 
 echo "=================== [4/4] assemble comparison report ==================="
-python poc_report.py --ce "$ART/train_ce.log" --tv "$ART/train_tv.log" --out "$ART"
+python poc_report.py \
+  --ce "$ART/train_ce.log" \
+  --tv "$ART/train_tv.log" \
+  --alpha "$ART/train_alpha.log" \
+  --out "$ART"
 cat "$ART/EVAL.md"
