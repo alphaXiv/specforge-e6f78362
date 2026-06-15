@@ -20,6 +20,11 @@ export TOKENIZERS_PARALLELISM=false
 export TORCHINDUCTOR_CACHE_DIR="$PWD/cache/compiled_kernels"
 export HF_HUB_ENABLE_HF_TRANSFER=${HF_HUB_ENABLE_HF_TRANSFER:-0}
 
+echo "=================== [0/4] system deps ==================="
+# sglang's sgl_kernel (sm90) dlopen fails without libnuma.so.1 on this image.
+apt-get update -y >/dev/null 2>&1 && apt-get install -y libnuma1 libnuma-dev >/dev/null 2>&1 || true
+python -c "import ctypes; ctypes.CDLL('libnuma.so.1'); print('libnuma OK')" || true
+
 echo "=================== [1/4] install specforge ==================="
 pip install -v . 2>&1 | tail -8
 
