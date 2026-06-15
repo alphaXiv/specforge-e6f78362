@@ -73,7 +73,12 @@ def print_args_with_dots(args):
 
 def print_on_rank0(message):
     if dist.get_rank() == 0:
-        logger.info(message)
+        # Use print(..., flush=True) instead of logger.info because no
+        # logging.basicConfig is installed in scripts/train_eagle3.py, so
+        # logger.info(...) calls are silently dropped. This previously caused
+        # the [mode=eval] acceptance-rate lines emitted by record_metrcs to
+        # never appear in train_*.log, making poc_report.py report NaN.
+        print(message, flush=True)
 
 
 def get_last_checkpoint(folder, prefix="epoch"):
