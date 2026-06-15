@@ -42,7 +42,10 @@ ls -la cache/dataset/ || true
 
 TARGET=Qwen/Qwen3-8B
 WARMUP_STEPS=${WARMUP_STEPS:-1000}
-FORK_STEPS=${FORK_STEPS:-600}
+# Bumped from 600 -> 1500: at the previous STEPS the training-loop
+# acceptance_rate hovered at ~0.03-0.10, well below the 0.5-0.8 regime
+# in which Bebop's CE-vs-TV claim is actually testable.
+FORK_STEPS=${FORK_STEPS:-1500}
 
 # train_eagle3 with the shared minimal config. $1=output tag; rest=extra args.
 train () {
@@ -66,6 +69,7 @@ train () {
     --tp-size 1 \
     --target-model-backend sglang \
     --report-to tensorboard \
+    --warmup-ratio 0.04 \
     --sglang-mem-fraction-static 0.4 \
     "$@" 2>&1 | tee "$ART/train_$tag.log"
 }
@@ -77,7 +81,7 @@ echo "warmup checkpoint: $WARMUP_CKPT"
 test -f "$WARMUP_CKPT/config.json"
 
 echo "=================== [4/5] forks: CE-continue vs TV-finetune ==================="
-EVAL_EVERY=$(( FORK_STEPS / 2 ))
+EVAL_EVERY=${EVAL_EVERY:-250}
 train ce --ckpt-dir "$WARMUP_CKPT" --max-num-steps "$FORK_STEPS" --total-steps "$FORK_STEPS" --eval-interval "$EVAL_EVERY"
 train tv --ckpt-dir "$WARMUP_CKPT" --lk-loss-type tv --max-num-steps "$FORK_STEPS" --total-steps "$FORK_STEPS" --eval-interval "$EVAL_EVERY"
 
