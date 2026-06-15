@@ -38,6 +38,11 @@ echo "=================== [2/5] prepare tiny ShareGPT slice ==================="
 if [ ! -f cache/dataset/sharegpt_train.jsonl ]; then
   python scripts/prepare_data.py --dataset sharegpt --sample-size 4000 --split-eval
 fi
+# OOD eval set: GSM8K (math/reasoning) — training data is still ShareGPT; only
+# the ce/tv forks below swap in cache/dataset/gsm8k_test.jsonl as --eval-data-path.
+if [ ! -f cache/dataset/gsm8k_test.jsonl ]; then
+  python scripts/prepare_data.py --dataset gsm8k --sample-size 500 --split-eval
+fi
 ls -la cache/dataset/ || true
 
 TARGET=Qwen/Qwen3-8B
@@ -76,10 +81,13 @@ WARMUP_CKPT=$(ls -d outputs/warmup/epoch_*_step_* 2>/dev/null | sort -V | tail -
 echo "warmup checkpoint: $WARMUP_CKPT"
 test -f "$WARMUP_CKPT/config.json"
 
-echo "=================== [4/5] forks: CE-continue vs TV-finetune ==================="
+echo "=================== [4/5] forks: CE-continue vs TV-finetune (OOD: GSM8K eval) ==================="
 EVAL_EVERY=$(( FORK_STEPS / 2 ))
-train ce --ckpt-dir "$WARMUP_CKPT" --max-num-steps "$FORK_STEPS" --total-steps "$FORK_STEPS" --eval-interval "$EVAL_EVERY"
-train tv --ckpt-dir "$WARMUP_CKPT" --lk-loss-type tv --max-num-steps "$FORK_STEPS" --total-steps "$FORK_STEPS" --eval-interval "$EVAL_EVERY"
+# Override --eval-data-path to GSM8K for both forks (argparse last-wins) so we
+# measure whether the TV-over-CE acceptance gap generalizes off the ShareGPT
+# training distribution. Training data is unchanged.
+train ce --ckpt-dir "$WARMUP_CKPT" --max-num-steps "$FORK_STEPS" --total-steps "$FORK_STEPS" --eval-interval "$EVAL_EVERY" --eval-data-path cache/dataset/gsm8k_test.jsonl
+train tv --ckpt-dir "$WARMUP_CKPT" --lk-loss-type tv --max-num-steps "$FORK_STEPS" --total-steps "$FORK_STEPS" --eval-interval "$EVAL_EVERY" --eval-data-path cache/dataset/gsm8k_test.jsonl
 
 echo "=================== [5/5] assemble comparison report ==================="
 cp -f outputs/ce/eval_acceptance.json "$ART/ce_eval_acceptance.json" 2>/dev/null || true

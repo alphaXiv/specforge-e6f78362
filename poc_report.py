@@ -55,12 +55,13 @@ def main():
     (out / "acceptance.json").write_text(json.dumps(payload, indent=2))
 
     L = []
-    L.append("# Bebop TV-loss PoC: CE-continue vs TV-finetune acceptance\n")
+    L.append("# Bebop TV-loss PoC: CE-continue vs TV-finetune acceptance (GSM8K eval)\n")
     L.append(
         "Qwen3-8B EAGLE3 draft head, ttt-length=3. A shared CE warmup is forked "
         "into two matched-length continuations: CE-continue (standard loss) and "
-        "TV-finetune (paper's TV loss). Acceptance = mean_v sum min(p,q) on "
-        "held-out ShareGPT eval at the final eval step.\n"
+        "TV-finetune (paper's TV loss). Both forks train on ShareGPT but are "
+        "evaluated out-of-distribution on GSM8K. Acceptance = mean_v sum min(p,q) "
+        "on held-out GSM8K eval at the final eval step.\n"
     )
     L.append("| MTP step | CE-continue | TV-finetune | TV - CE |")
     L.append("|---|---|---|---|")
