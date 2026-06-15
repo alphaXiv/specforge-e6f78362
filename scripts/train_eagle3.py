@@ -205,8 +205,8 @@ def parse_args() -> Tuple[ArgumentParser, Namespace]:
         "--lk-loss-type",
         type=str,
         default=None,
-        choices=["lambda", "alpha"],
-        help="Enable LK loss objective. Choices: lambda (hybrid KL+LK), alpha (pure acceptance-rate likelihood).",
+        choices=["lambda", "alpha", "tv", "e2e_tv"],
+        help="Enable LK loss objective. Choices: lambda (hybrid KL+LK), alpha (pure acceptance-rate likelihood), tv / e2e_tv (Bebop arXiv:2606.12370 Total Variation loss = 1 - sum_v min(p,q)).",
     )
     lk_group.add_argument(
         "--kl-scale",
@@ -843,7 +843,7 @@ def record_metrcs(
     for i in range(len(acceptance_rates)):
         logdict[f"{mode}/acceptance_rate_{i}"] = acceptance_rates[i]
         print_on_rank0(
-            f"Eval - Step {global_step} [{global_step + 1}/{args.num_epochs}], position {i},  Acceptance Rate: {acceptance_rates[i]:.4f}"
+            f"[mode={mode}] Step {global_step} [{global_step + 1}/{args.num_epochs}], position {i},  Acceptance Rate: {acceptance_rates[i]:.4f}"
         )
 
     if ploss_denoms is not None:

@@ -90,6 +90,16 @@ def compute_lk_loss(
     kl_decay: float,
 ) -> torch.Tensor:
     """Compute LK loss from KL loss and acceptance rate."""
+    if lk_loss_type == "tv":
+        # Bebop (arXiv:2606.12370) Total Variation loss. The expected
+        # rejection-sampling acceptance rate is alpha = sum_v min(p_v, q_v)
+        # = 1 - d_TV(p, q), so directly minimizing d_TV maximizes acceptance.
+        # acceptance_rate here is already the masked mean of sum_v min(p, q).
+        return 1.0 - acceptance_rate
+    if lk_loss_type == "e2e_tv":
+        # Per-step TV objective used as the building block of the paper's
+        # end-to-end multi-step TV loss (the TTT loop sums the per-step terms).
+        return 1.0 - acceptance_rate
     if lk_loss_type == "alpha":
         return -log_acceptance_rate
     if lk_loss_type == "lambda":
