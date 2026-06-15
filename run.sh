@@ -67,8 +67,11 @@ run_one () {
 }
 
 echo "=================== [3/4] train CE baseline, then TV ==================="
-run_one ce
-run_one tv --lk-loss-type tv
+# Use uniform per-position loss weights (--ploss-discount 1.0) for both arms so
+# the EAGLE3 default 0.8^i discount does not mask the TV objective's gains on
+# deeper TTT positions, which is exactly where TV is supposed to dominate CE.
+run_one ce --ploss-discount 1.0
+run_one tv --lk-loss-type tv --ploss-discount 1.0
 
 echo "=================== [4/4] assemble comparison report ==================="
 python poc_report.py --ce "$ART/train_ce.log" --tv "$ART/train_tv.log" --out "$ART"

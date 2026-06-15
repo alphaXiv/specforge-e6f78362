@@ -198,6 +198,14 @@ def parse_args() -> Tuple[ArgumentParser, Namespace]:
     )
     training_group.add_argument("--seed", type=int, default=0)
     training_group.add_argument("--draft-accumulation-steps", type=int, default=1)
+    training_group.add_argument(
+        "--ploss-discount",
+        type=float,
+        default=0.8,
+        help="Per-position geometric discount for multi-step draft loss aggregation: "
+        "loss = sum_i (ploss_discount ** i) * plosses[i]. The EAGLE3 default of 0.8 "
+        "down-weights deeper TTT positions; set to 1.0 for uniform position weights.",
+    )
 
     # LK / acceptance-rate loss arguments
     lk_group = parser.add_argument_group("lk loss")
@@ -776,7 +784,7 @@ def run_forward(
 def run_backward_and_update(
     args: Namespace, plosses: List[torch.Tensor], optimizer: Optimizer, global_step: int
 ) -> Optional[torch.Tensor]:
-    ploss_weight = [0.8**i for i in range(len(plosses))]
+    ploss_weight = [args.ploss_discount**i for i in range(len(plosses))]
     ploss = (
         sum([ploss_weight[i] * plosses[i] for i in range(len(plosses))])
         / args.draft_accumulation_steps
