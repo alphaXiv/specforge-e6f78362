@@ -1255,6 +1255,24 @@ def main():
                 ]
                 eval_plosses = [torch.stack(pl).mean() for pl in eval_plosses]
 
+                # --- Bebop PoC: dump per-MTP-step eval acceptance to JSON ---
+                # (robust artifact; avoids fragile stdout/tqdm log parsing)
+                if dist.get_rank() == 0:
+                    import json as _json
+
+                    _accs = [float(a) for a in eval_acceptance_rates]
+                    _payload = {
+                        "global_step": int(global_step),
+                        "lk_loss_type": args.lk_loss_type,
+                        "acceptance_by_pos": _accs,
+                        "mean_acceptance": sum(_accs) / len(_accs),
+                    }
+                    os.makedirs(args.output_dir, exist_ok=True)
+                    with open(
+                        os.path.join(args.output_dir, "eval_acceptance.json"), "w"
+                    ) as _f:
+                        _json.dump(_payload, _f, indent=2)
+
                 record_metrcs(
                     args,
                     eval_acces,
