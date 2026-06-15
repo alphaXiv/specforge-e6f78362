@@ -40,13 +40,14 @@ EVAL_EVERY=${EVAL_EVERY:-100}
 
 run_one () {
   local tag=$1; shift
-  echo "=================== train: $tag ==================="
+  local seed=$1; shift
+  echo "=================== train: $tag seed=$seed ==================="
   torchrun --standalone --nproc_per_node 1 scripts/train_eagle3.py \
     --target-model-path "$TARGET" \
     --draft-model-config configs/qwen3-8b-eagle3.json \
     --train-data-path cache/dataset/sharegpt_train.jsonl \
     --eval-data-path cache/dataset/sharegpt_test.jsonl \
-    --output-dir "outputs/$tag" \
+    --output-dir "outputs/${tag}_s${seed}" \
     --num-epochs 1 \
     --max-num-steps "$STEPS" \
     --total-steps "$STEPS" \
@@ -63,13 +64,16 @@ run_one () {
     --target-model-backend sglang \
     --report-to tensorboard \
     --sglang-mem-fraction-static 0.4 \
-    "$@" 2>&1 | tee "$ART/train_$tag.log"
+    --seed "$seed" \
+    "$@" 2>&1 | tee "$ART/train_${tag}_s${seed}.log"
 }
 
-echo "=================== [3/4] train CE baseline, then TV ==================="
-run_one ce
-run_one tv --lk-loss-type tv
+echo "=================== [3/4] train CE baseline, then TV (3 seeds each) ==================="
+for seed in 0 1 2; do
+  run_one ce "$seed"
+  run_one tv "$seed" --lk-loss-type tv
+done
 
 echo "=================== [4/4] assemble comparison report ==================="
-python poc_report.py --ce "$ART/train_ce.log" --tv "$ART/train_tv.log" --out "$ART"
+python poc_report.py --ce "$ART/train_ce_s*.log" --tv "$ART/train_tv_s*.log" --out "$ART"
 cat "$ART/EVAL.md"
