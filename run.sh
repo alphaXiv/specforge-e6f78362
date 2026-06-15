@@ -50,7 +50,7 @@ run_one () {
     --batch-size 1 \
     --learning-rate 1e-4 \
     --max-length 2048 \
-    --ttt-length 3 \
+    --ttt-length 7 \
     --chat-template qwen \
     --cache-dir cache \
     --embedding-key model.embed_tokens.weight \
