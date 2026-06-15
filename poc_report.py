@@ -47,7 +47,28 @@ def main():
     def mean(d):
         return sum(d.values()) / len(d) if d else float("nan")
 
+    def gamma(d):
+        """Expected accepted-prefix length γ = Σ_{k=1..K} Π_{i<k} α_i.
+
+        With α_i = per-position acceptance rate (positions sorted ascending)
+        and K = number of MTP positions, this is the chain-acceptance length
+        that controls speculative-decoding wall-clock speedup:
+            γ = 1 + α_0 + α_0·α_1 + ... + α_0·α_1·...·α_{K-2}   (K terms).
+        """
+        if not d:
+            return float("nan")
+        alphas = [d[p] for p in sorted(d)]
+        g, prod = 0.0, 1.0
+        for a in alphas:
+            g += prod  # adds Π_{i<k} α_i for k = 1, 2, ..., K
+            prod *= a
+        return g
+
     ce_mean, tv_mean = mean(ce), mean(tv)
+    ce_gamma, tv_gamma = gamma(ce), gamma(tv)
+    K = len(positions) if positions else 0
+    ce_gamma_norm = ce_gamma / K if K else float("nan")
+    tv_gamma_norm = tv_gamma / K if K else float("nan")
     ok = bool(ce and tv) and tv_mean >= ce_mean - 1e-4
 
     out = Path(args.out)
@@ -59,6 +80,12 @@ def main():
         "ce_mean_acceptance": ce_mean,
         "tv_mean_acceptance": tv_mean,
         "tv_minus_ce_mean": tv_mean - ce_mean,
+        "K": K,
+        "ce_gamma": ce_gamma,
+        "tv_gamma": tv_gamma,
+        "tv_minus_ce_gamma": tv_gamma - ce_gamma,
+        "ce_gamma_per_step": ce_gamma_norm,
+        "tv_gamma_per_step": tv_gamma_norm,
         "claim_reproduced": ok,
     }
     (out / "acceptance.json").write_text(json.dumps(payload, indent=2))
@@ -82,12 +109,26 @@ def main():
     lines.append(
         f"| **mean** | **{ce_mean:.4f}** | **{tv_mean:.4f}** | **{tv_mean - ce_mean:+.4f}** |"
     )
+    lines.append(
+        f"| **γ = Σ_k Π_{{i<k}} α_i** | **{ce_gamma:.4f}** | **{tv_gamma:.4f}** | "
+        f"**{tv_gamma - ce_gamma:+.4f}** |"
+    )
+    lines.append(
+        f"| **γ / K** (K={K}) | **{ce_gamma_norm:.4f}** | **{tv_gamma_norm:.4f}** | "
+        f"**{tv_gamma_norm - ce_gamma_norm:+.4f}** |"
+    )
     lines.append("")
     verdict = "REPRODUCED" if ok else "NOT reproduced"
     lines.append(
         f"**Core claim (TV acceptance >= CE acceptance): {verdict}.** "
         f"Mean acceptance CE={ce_mean:.4f} vs TV={tv_mean:.4f} "
         f"(delta {tv_mean - ce_mean:+.4f}).\n"
+    )
+    lines.append(
+        f"Expected accepted-prefix length γ (the speedup proxy): "
+        f"CE={ce_gamma:.4f} vs TV={tv_gamma:.4f} (delta {tv_gamma - ce_gamma:+.4f}); "
+        f"γ/K: CE={ce_gamma_norm:.4f} vs TV={tv_gamma_norm:.4f} "
+        f"(delta {tv_gamma_norm - ce_gamma_norm:+.4f}).\n"
     )
     (out / "EVAL.md").write_text("\n".join(lines))
     print("\n".join(lines))
