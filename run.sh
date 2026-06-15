@@ -21,7 +21,7 @@ export TORCHINDUCTOR_CACHE_DIR="$PWD/cache/compiled_kernels"
 export HF_HUB_ENABLE_HF_TRANSFER=${HF_HUB_ENABLE_HF_TRANSFER:-0}
 
 echo "=================== [1/4] install specforge ==================="
-pip install -v . --prerelease=allow 2>&1 | tail -8
+pip install -v . 2>&1 | tail -8
 
 echo "=================== [2/4] prepare tiny ShareGPT slice ==================="
 if [ ! -f cache/dataset/sharegpt_train.jsonl ]; then
