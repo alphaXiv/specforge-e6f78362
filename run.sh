@@ -76,16 +76,24 @@ WARMUP_CKPT=$(ls -d outputs/warmup/epoch_*_step_* 2>/dev/null | sort -V | tail -
 echo "warmup checkpoint: $WARMUP_CKPT"
 test -f "$WARMUP_CKPT/config.json"
 
-echo "=================== [4/5] forks: CE-continue vs TV-finetune ==================="
+echo "=================== [4/5] forks: CE-continue vs TV-finetune vs TV-scratch ==================="
 EVAL_EVERY=$(( FORK_STEPS / 2 ))
+SCRATCH_STEPS=$(( WARMUP_STEPS + FORK_STEPS ))
+SCRATCH_EVAL_EVERY=$(( SCRATCH_STEPS / 2 ))
 train ce --ckpt-dir "$WARMUP_CKPT" --max-num-steps "$FORK_STEPS" --total-steps "$FORK_STEPS" --eval-interval "$EVAL_EVERY"
 train tv --ckpt-dir "$WARMUP_CKPT" --lk-loss-type tv --max-num-steps "$FORK_STEPS" --total-steps "$FORK_STEPS" --eval-interval "$EVAL_EVERY"
+# TV-from-scratch: no warmup checkpoint, compute-matched to warmup+fork. Tests
+# the paper's "TV is a refinement loss" justification (Eq. 11: gradient ∝ q_j,
+# which vanishes for a uniform/untrained head; see lk_loss.py L97 `1.0 - acceptance_rate`).
+train tv_scratch --lk-loss-type tv --max-num-steps "$SCRATCH_STEPS" --total-steps "$SCRATCH_STEPS" --eval-interval "$SCRATCH_EVAL_EVERY"
 
 echo "=================== [5/5] assemble comparison report ==================="
 cp -f outputs/ce/eval_acceptance.json "$ART/ce_eval_acceptance.json" 2>/dev/null || true
 cp -f outputs/tv/eval_acceptance.json "$ART/tv_eval_acceptance.json" 2>/dev/null || true
+cp -f outputs/tv_scratch/eval_acceptance.json "$ART/tv_scratch_eval_acceptance.json" 2>/dev/null || true
 python poc_report.py \
   --ce outputs/ce/eval_acceptance.json \
   --tv outputs/tv/eval_acceptance.json \
+  --tv-scratch outputs/tv_scratch/eval_acceptance.json \
   --out "$ART"
 cat "$ART/EVAL.md"
