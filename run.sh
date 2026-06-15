@@ -62,10 +62,15 @@ run_one () {
     "$@" 2>&1 | tee "$ART/train_$tag.log"
 }
 
-echo "=================== [3/4] train CE baseline, then TV ==================="
+echo "=================== [3/4] train CE baseline, then TV, then lambda ==================="
 run_one ce
 run_one tv --lk-loss-type tv
+run_one lambda --lk-loss-type lambda --kl-scale 1.0 --kl-decay 3.0
 
 echo "=================== [4/4] assemble comparison report ==================="
-python poc_report.py --ce "$ART/train_ce.log" --tv "$ART/train_tv.log" --out "$ART"
+python poc_report.py \
+  --ce "$ART/train_ce.log" \
+  --tv "$ART/train_tv.log" \
+  --lambda-log "$ART/train_lambda.log" \
+  --out "$ART"
 cat "$ART/EVAL.md"
