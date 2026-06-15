@@ -1,3 +1,30 @@
+## Implementation notes
+
+This fork adds a minimal proof-of-concept for the Bebop Total Variation loss
+(arXiv:2606.12370) on top of SpecForge. Run it with:
+
+```bash
+bash run.sh
+```
+
+Expect about 17 minutes on 1x H100 (~$1). The script CE-warms a Qwen3-8B EAGLE3
+draft head, then forks two matched 600-step continuations, CE-continue and
+TV-finetune (`--lk-loss-type tv`), and compares rejection-sampling acceptance.
+
+Takeaways:
+
+- Core claim reproduced. TV-finetune beats CE by +4.9 points mean acceptance
+  and on every MTP step, inside the paper's reported 3 to 8 percent range.
+- The TV gradient is proportional to the draft prob `q`, so it vanishes from a
+  random head. TV is a refinement objective, hence the CE warmup.
+- Fixes a future runner needs: install with plain `pip` (no `--prerelease`),
+  `apt-get install libnuma1` for the SGLang kernel, and drop
+  `--shard-target-output` when `tp-size=1`.
+
+The TV loss lives in `specforge/core/lk_loss.py`; the harness is `run.sh`.
+
+---
+
 <div align="center" id="sglangtop">
 <img src="./assets/logo.png" alt="logo" width="400" margin="10px"></img>
 
